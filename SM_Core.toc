@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: |cff00ccffSM|r Stats Monitor
+## Author: github.com/stlevkov/SM_Core
+## Notes: Simple Stats Monitor displaying Defences, Damage or Spell based on the player spec
+## Version: 0.1
+## DefaultState: enabled
+
+display_stats.lua
