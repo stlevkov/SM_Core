@@ -1,9 +1,9 @@
 
-print("|cff00ccffStats Monitor|r loaded!");
-print("Current version |cff00ccff0.3|r");
+print("|cff00ccffStats Monitor by Lqlqdum|r loaded! Current version |cff00ccff0.3|r");
+print("|cff00ccffType /togglestats to show/hide the stats monitor|r");
 
 -- (1)
-local f = CreateFrame("Frame", "YourFrameName", UIParent)
+local f = CreateFrame("Frame", "WindowFrame", UIParent)
 f:SetSize(150, 130)
 f:SetPoint("CENTER")
 
@@ -32,10 +32,31 @@ close:SetScript("OnClick", function()
 end)
 
 -- (5)
+-- Define the function to toggle the frame visibility and manage events
+local function ToggleStatsFrame()
+    if f:IsShown() then
+        f:Hide()
+        myFrame:UnregisterEvent("UNIT_AURA")
+        myFrame:UnregisterEvent("UNIT_SPELLCAST_SENT")
+        myFrame:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    else
+        f:Show()
+        myFrame:RegisterEvent("UNIT_AURA")
+        myFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
+        myFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    end
+end
+
+-- Register the slash command
+SLASH_TOGGLESTATS1 = "/togglestats"
+SlashCmdList["TOGGLESTATS"] = ToggleStatsFrame
+
+-- (6)
 local addonText = f:CreateFontString(nil, "addonText", "GameFontDisable")
 addonText:SetPoint("TOP", -10, -3)
 addonText:SetText(" cast any spell");
 
+-- (7)
 local armorText = f:CreateFontString(nil, "armor", "GameFontGreenLarge")
 armorText:SetPoint("LEFT", 0, 30)
 armorText:SetJustifyH("LEFT")
@@ -66,42 +87,115 @@ local myCurrentCast;
 local warningSent
 warningSent = false
 
-myFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED");
-myFrame:RegisterEvent("UNIT_SPELLCAST_SENT");
-myFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED");
+local myFrame = CreateFrame("Frame");
+local warningSent = false
+
+-- Register only relevant events
+myFrame:RegisterEvent("UNIT_AURA")
+myFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
+myFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+
+-- Event handler function
+myFrame:SetScript("OnEvent", function(self, event, arg1)
+    -- Filter only for player actions
+    if arg1 == "player" then
+        if event == "UNIT_AURA" then
+            -- Handle aura updates (buffs/debuffs)
+            handlePlayerAura()
+        elseif event == "UNIT_SPELLCAST_SENT" then
+            -- Handle spell cast started
+            handleSpellCastSent()
+        elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+            -- Handle spell cast succeeded
+            handleSpellCastSuccess()
+        end
+    end
+end)
+
+-- Function to handle player auras (buffs/debuffs)
+function handlePlayerAura()
+    -- Example: Check for a specific buff or effect on the player
+    local hasHasteBuff = UnitBuff("player", "Haste Buff") -- Replace with an actual buff name
+    if hasHasteBuff then
+        print("Player has Haste Buff!")
+    else
+        print("No Haste Buff active.")
+    end
+end
+
+-- Function to handle spell cast sent
+function handleSpellCastSent()
+    print("Spell cast started.")
+end
+
+-- Function to handle spell cast success
+function handleSpellCastSuccess()
+    print("Spell cast successful!")
+end
+
+
 myFrame:SetScript("OnEvent",
-	function(self, event, arg1, arg2, arg3, arg4)
-	localizedClass, englishClass, classIndex = UnitClass("player");
-	--print("english Class: " .. englishClass) -- MAGE, PALADIN, WARRIOR etc...
-	if englishClass == "MAGE" then
-		local classRole = getClassRole()
-		if(classRole == 2) then
-			--print("FIRE TALENTS")
-			addonText:SetText(" Fire Mage");
-			displayRDPS("FIRE")
-		end
-	elseif englishClass == "PALADIN" then
-		addonText:SetText(" Paladin Tank");
-		displayTank()
-	elseif englishClass == "DEATHKNIGHT" then
-		addonText:SetText(" Death Knight")
-		displayTank()
-	elseif englishClass == "WARRIOR" then
-		addonText:SetText(" Warrior Tank")
-		displayTank()
-	end
-   end
+    function(self, event, arg1, arg2, arg3, arg4)
+        localizedClass, englishClass, classIndex = UnitClass("player")
+        if englishClass == "MAGE" then
+            local classRole = getClassRole()
+            if classRole == 2 then
+                addonText:SetText(" Fire Mage")
+                displayRDPS("FIRE")
+            end
+        elseif englishClass == "PALADIN" then
+            local classRole = getClassRole()
+            if classRole == 2 then
+                addonText:SetText(" Paladin Tank")
+                DisplayTank()
+            elseif classRole == 3 then
+                addonText:SetText(" Paladin Retri")
+                displayMDPS()
+            end
+        elseif englishClass == "DEATHKNIGHT" then
+            addonText:SetText(" Death Knight")
+            DisplayTank()
+        elseif englishClass == "WARRIOR" then
+            local classRole = getClassRole()
+            if classRole == 2 then
+                addonText:SetText(" Warrior Fury")
+                displayMDPS()
+            elseif classRole == 3 then
+                addonText:SetText(" Warrior Tank")
+                DisplayTank()
+            end
+        end
+    end
 );
 
 function getClassRole()
-	local classRole = processClassSpecialization(englishClass)  -- 1 Arcane, 2 Fire, 3 Frost
-	if classRole[1] > classRole[2] and classRole[1] > classRole[3] then
-	  return 1
-	elseif classRole[2] > classRole[1] and classRole[2] > classRole[3] then
-	  return 2
-	else 
-	  return 3
-	end
+    local classRole = processClassSpecialization(englishClass)
+    if englishClass == "PALADIN" then
+        if classRole[3] > classRole[1] and classRole[3] > classRole[2] then
+            return 3 -- Retribution
+        elseif classRole[2] > classRole[1] and classRole[2] > classRole[3] then
+            return 2 -- Protection
+        else
+            return 1 -- Holy
+        end
+    elseif englishClass == "WARRIOR" then
+        if classRole[2] > classRole[1] and classRole[2] > classRole[3] then
+            return 2 -- Fury
+        elseif classRole[3] > classRole[1] and classRole[3] > classRole[2] then
+            return 3 -- Protection
+        else
+            return 1 -- Arms
+        end
+    else
+        -- Existing logic for other classes
+        if classRole[1] > classRole[2] and classRole[1] > classRole[3] then
+            return 1
+        elseif classRole[2] > classRole[1] and classRole[2] > classRole[3] then
+            return 2
+        else 
+            return 3
+        end
+    end
 end
 
 function displayRDPS(talent)
@@ -143,11 +237,52 @@ function displayRDPS(talent)
 	   physDmgText:SetText(string.format("|cff00ccffHit chance|r %.2f %%", hitModifier))
 	   dodgeText:SetText(string.format("|cff00ccffCritical  |r %.2f %%", critChance))
 	   parryText:SetText(string.format("|cff00ccffHaste     |r %.2f %%", 0))
+
 	   blockText:SetText(string.format("|cff00ccffSpeed    |r %.2f %%", 0))
 
 end
 
-function displayTank()
+function displayMDPS()
+    -- print("Debug: Entering displayMDPS function")
+    
+    local base, posBuff, negBuff = UnitAttackPower("player")
+    local attackPower = base + posBuff + negBuff
+	local hitRating = GetCombatRating(CR_HIT_MELEE) -- for melee hit rating
+	-- local spellHitRating = GetCombatRating(CR_HIT_SPELL) -- for spell hit rating
+	-- local rangedHitRating = GetCombatRating(CR_HIT_RANGED) -- for ranged hit rating
+	local meleCrit = GetRealMeleeCrit()
+	local expertiseRating, expertiseValue = GetRealExpertise()
+	-- print("Debug: expertiseRating: " .. expertiseRating .. " expertiseValue: " .. expertiseValue)
+    -- Cap: 173 rating for orcs using axes & dwarves using maces, 189 for humans using swords or maces, 214 for others
+	local armorPenetrationRating = GetRealArmorPenetration()
+	-- print("Debug: armorPenetrationRating: " .. armorPenetrationRating)
+    -- Cap: 1400 rating
+
+	local haste = GetCombatRating(18)
+	-- print("Current Haste: " .. haste .. "%")
+
+    local max_health = UnitHealthMax("player")
+    local health = UnitHealth("player")
+    local healthWarningPercentage = 100 - (((max_health - health) / max_health) * 100)
+    
+    if healthWarningPercentage < 25 then
+        if not warningSent then
+            -- SendChatMessage("WARNING HEALTH LOW ".. health.. " !!!", "YELL")
+            warningSent = true
+        end
+    elseif healthWarningPercentage > 21 then
+        warningSent = false -- reset
+    end
+	HasGreatBlessingOfMight()
+    armorText:SetText("|cff00ccffAttack Pwr   |r " .. attackPower)
+	physDmgText:SetText(string.format("|cff00ccffCrit Rate  |r %.2f %%", meleCrit))
+	dodgeText:SetText(("|cff00ccffHaste Rate       |r" .. haste))
+	parryText:SetText(string.format("|cff00ccffARP Rate       |r" .. armorPenetrationRating))
+    blockText:SetText(string.format("|cff00ccffHit/E  |r %d / %.2f", hitRating, expertiseValue))
+    -- print("Debug: Exiting displayMDPS function")
+end
+
+function DisplayTank()
 	baseArmor, totalArmor, bonusArmor, minusArmor = UnitResistance("player", 0)
 	   
 	   local parry = GetParryChance();
@@ -172,6 +307,7 @@ function displayTank()
 	   else
 			armorText:SetText("|cff00ccffArmor  |r " .. totalArmor)
 	   end
+
 	   physDmgText:SetText(string.format("|cff00ccffReduc  |r %.2f %%", dmgReduction))
 	   dodgeText:SetText(string.format("|cff00ccffDodge  |r %.2f %%", dodge))
 	   parryText:SetText(string.format("|cff00ccffParry     |r %.2f %%", parry))
@@ -215,7 +351,88 @@ function GetRealSpellCrit(school)
         this.spellCrit[i] = spellCrit;
 
     end
-
     return maxCrit;
-
 end
+
+function GetRealMeleeCrit()
+    local maxCrit = GetCritChance(); -- Get the overall melee crit chance
+    local meleeCrit;
+
+    this.meleeCrit = {};
+    this.meleeCrit[1] = maxCrit; -- Store the max crit for the first index
+
+    -- In Classic WoW, there are no additional schools for melee like spells
+    -- So we'll simply store the overall melee crit chance
+    for i=2, 7 do
+        meleeCrit = GetCritChance(); -- Get the same crit chance as it applies to all melee
+        maxCrit = max(maxCrit, meleeCrit);
+        this.meleeCrit[i] = meleeCrit;
+    end
+
+    return maxCrit; -- Return the max melee crit
+end
+
+function GetRealExpertise()
+    local expertiseRating = GetCombatRating(CR_EXPERTISE); -- Get expertise rating
+    local expertiseValue = GetCombatRatingBonus(CR_EXPERTISE); -- Get expertise value (actual expertise)
+
+    this.expertise = {};
+    this.expertise.rating = expertiseRating;
+    this.expertise.value = expertiseValue;
+
+    return expertiseRating, expertiseValue; -- Return both rating and value
+end
+
+function GetRealArmorPenetration()
+    local armorPenetrationRating = GetCombatRating(25); -- Get effective armor penetration
+    this.armorPenetration = {};
+    this.armorPenetration.rating = armorPenetrationRating;
+
+    return armorPenetrationRating; -- Return the armor penetration rating
+end
+
+function HasGreatBlessingOfMight()
+	local buffName = "Great Blessing of Might"
+    for i = 1, 40 do
+        local name = UnitBuff("player", i)
+		--      print(name)
+        if not name then
+            break -- No more buffs, exit the loop
+        end
+        if name == buffName then
+             print("Great Blessing of Might is active!")
+            return true
+        end
+    end
+    return false
+end
+
+-- Combat Rating Constants
+    -- CR_WEAPON_SKILL = 1
+    -- CR_DEFENSE_SKILL = 2
+    -- CR_DODGE = 3
+    -- CR_PARRY = 4
+    -- CR_BLOCK = 5
+    -- CR_HIT_MELEE = 6
+    -- CR_HIT_RANGED = 7
+    -- CR_HIT_SPELL = 8
+    -- CR_CRIT_MELEE = 9
+    -- CR_CRIT_RANGED = 10
+    -- CR_CRIT_SPELL = 11
+    -- CR_HIT_TAKEN_MELEE = 12
+    -- CR_HIT_TAKEN_RANGED = 13
+    -- CR_HIT_TAKEN_SPELL = 14
+    -- COMBAT_RATING_RESILIENCE_CRIT_TAKEN = 15
+    -- COMBAT_RATING_RESILIENCE_PLAYER_DAMAGE_TAKEN = 16
+    -- CR_CRIT_TAKEN_SPELL = 17
+    -- CR_HASTE_MELEE = 18
+    -- CR_HASTE_RANGED = 19
+    -- CR_HASTE_SPELL = 20
+    -- CR_WEAPON_SKILL_MAINHAND = 21
+    -- CR_WEAPON_SKILL_OFFHAND = 22
+    -- CR_WEAPON_SKILL_RANGED = 23
+    -- CR_EXPERTISE = 24
+    -- CR_ARMOR_PENETRATION = 25
+    -- CR_MASTERY = 26
+    -- CR_VERSATILITY = 29
+    -- Versatility = 30 (bug?)
