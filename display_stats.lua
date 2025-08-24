@@ -187,6 +187,18 @@ myFrame:SetScript("OnEvent",
                 addonText:SetText(" Shaman Restoration")
                 displayHealers("RESTORATION")
             end
+        elseif englishClass == "DRUID" then
+            local classRole = getClassRole()
+            if classRole == 1 then
+                addonText:SetText(" Druid Balance")
+                displayCasters("BALANCE")
+            elseif classRole == 2 then
+                addonText:SetText(" Druid Feral")
+                displayMDPS("FERAL")
+            elseif classRole == 3 then
+                addonText:SetText(" Druid Restoration")
+                displayHealers("RESTORATION")
+            end
         end
     end
 );
@@ -237,6 +249,12 @@ function displayCasters(talent)
     if talent == "FIRE" then
         spellDmg = GetSpellBonusDamage(3);
     elseif talent == "AFFLICTION" then
+        spellDmg = GetSpellBonusDamage(6);
+    elseif talent == "BALANCE" then
+        spellDmg = GetSpellBonusDamage(4);
+    elseif talent == "ELEMENTAL" then
+        spellDmg = GetSpellBonusDamage(4);
+    elseif talent == "DEMONOLOGY" then
         spellDmg = GetSpellBonusDamage(6);
     end
 
